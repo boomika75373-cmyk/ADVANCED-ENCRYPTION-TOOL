@@ -1,0 +1,77 @@
+import os
+import base64
+from cryptography.hazmat.primitives.ciphers.aead import AESGEN
+
+def generate_key():
+    """Generate a 256-bit (32 bytes) AES key."""
+    return AESGCM.generate_key(bit_length=256)  
+
+
+def encrypt(plaintext: str, key: bytes) -> str:
+    """
+    Encrypt a UTF-8 plaintext string with AES-256-GCM.
+    Returns a base64 string that contains nonce + ciphertext + tag.
+    """
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)  
+    plaintext_bytes = plaintext.encode("utf-8")
+
+    ciphertext = aesgcm.encrypt(nonce, plaintext_bytes, associated_data=None)
+
+    encrypted_bytes = nonce + ciphertext
+    return base64.b64encode(encrypted_bytes).decode("utf-8")
+
+
+def decrypt(token_b64: str, key: bytes) -> str:
+    """
+    Decrypt a base64 token (nonce + ciphertext + tag) created by encrypt().
+    Returns the original UTF-8 plaintext string.
+    """
+    aesgcm = AESGCM(key)
+    encrypted_bytes = base64.b64decode(token_b64.encode("utf-8"))
+
+    nonce = encrypted_bytes[:12]
+    ciphertext = encrypted_bytes[12:]
+
+    plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, associated_data=None)
+    return plaintext_bytes.decode("utf-8")
+
+def main():
+    print("=== Advanced AES-256 Encryption Tool ===")
+    print("1. Generate new key")
+    print("2. Encrypt message with existing key")
+    print("3. Decrypt message with existing key")
+
+    choice = input("Enter choice (1/2/3): ").strip()
+
+    if choice == "1":
+        key = generate_key()
+        print("\nYour AES-256 key (keep this secret!):")
+        print(base64.b64encode(key).decode("utf-8"))
+        print("\nStore this key safely; you need it to decrypt your data.")
+    elif choice == "2":
+        key_b64 = input("Enter AES key (base64): ").strip()
+        key = base64.b64decode(key_b64.encode("utf-8"))
+
+        plaintext = input("Enter plaintext to encrypt: ")
+        token_b64 = encrypt(plaintext, key)
+        print("\nEncrypted token (nonce + ciphertext + tag, base64):")
+        print(token_b64)
+    elif choice == "3":
+        key_b64 = input("Enter AES key (base64): ").strip()
+        key = base64.b64decode(key_b64.encode("utf-8"))
+
+        token_b64 = input("Enter encrypted token (base64): ").strip()
+        try:
+            plaintext = decrypt(token_b64, key)
+            print("\nDecrypted plaintext:")
+            print(plaintext)
+        except Exception as e:
+            print("\nDecryption failed! Possible wrong key or corrupted data.")
+            print("Error:", e)
+    else:
+        print("Invalid choice.")
+
+
+if __name__ == "__main__":
+    main()
